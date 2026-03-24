@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="uz">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, user-scalable=no"
+    />
+    <meta name="theme-color" content="#6c63ff" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <meta name="apple-mobile-web-app-title" content="Ro'yxat" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta
+      name="description"
+      content="Xaridlar ro'yxati — tez, qulay, offline"
+    />
+    <link rel="manifest" href="manifest.json" />
+    <link rel="apple-touch-icon" href="icon-192.png" />
+    <title>Ro'yxat</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <!-- DELETE MODAL -->
+    <div id="deleteModal" class="modal-backdrop">
+      <div class="modal-box">
+        <div class="modal-icon">🗑️</div>
+        <h3>O'chirishni tasdiqlang</h3>
+        <p id="modalText">Bu mahsulotni o'chirasizmi?</p>
+        <div class="modal-btns">
+          <button class="btn-cancel" onclick="closeModal()">Bekor</button>
+          <button class="btn-danger" id="confirmDelete">O'chirish</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- EDIT MODAL -->
+    <div id="editModal" class="modal-backdrop">
+      <div class="modal-box">
+        <div class="modal-icon">✏️</div>
+        <h3>Tahrirlash</h3>
+        <input
+          type="text"
+          id="editInput"
+          class="edit-input"
+          placeholder="Yangi nom..."
+        />
+        <div class="modal-btns">
+          <button class="btn-cancel" onclick="closeEditModal()">Bekor</button>
+          <button class="btn-primary" id="confirmEdit">Saqlash</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CLEAR ALL MODAL -->
+    <div id="clearModal" class="modal-backdrop">
+      <div class="modal-box">
+        <div class="modal-icon">⚠️</div>
+        <h3>Hammasini o'chirish</h3>
+        <p>Barcha mahsulotlar o'chib ketadi!</p>
+        <div class="modal-btns">
+          <button class="btn-cancel" onclick="closeClearModal()">Bekor</button>
+          <button class="btn-danger" id="confirmClear">Ha, o'chirish</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="app">
+      <!-- HEADER -->
+      <header class="app-header">
+        <div class="header-left">
+          <div class="app-logo">🛒</div>
+          <div>
+            <h1 class="app-title">Ro'yxat</h1>
+            <p class="app-sub" id="itemCount">0 ta mahsulot</p>
+          </div>
+        </div>
+        <div class="header-right">
+          <button
+            class="icon-btn"
+            id="themeBtn"
+            onclick="toggleTheme()"
+            title="Tema"
+          >
+            <span id="themeIcon">🌙</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- PROGRESS BAR -->
+      <div class="progress-wrap" id="progressWrap">
+        <div class="progress-info">
+          <span id="doneCount">0 ta bajarildi</span>
+          <span id="progressPct">0%</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+      </div>
+
+      <!-- INPUT AREA -->
+      <div class="input-area">
+        <form id="productForm">
+          <div class="input-wrap">
+            <span class="input-icon">📝</span>
+            <input
+              type="text"
+              id="nameInput"
+              placeholder="Mahsulot qo'shing..."
+              autocomplete="off"
+              autocorrect="off"
+              spellcheck="false"
+            />
+            <button type="submit" class="add-btn" aria-label="Qo'shish">
+              <svg
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- FILTER TABS -->
+      <div class="filter-tabs" id="filterTabs">
+        <button class="tab active" data-filter="all" onclick="setFilter('all')">
+          Hammasi
+        </button>
+        <button class="tab" data-filter="active" onclick="setFilter('active')">
+          Qolgan
+        </button>
+        <button class="tab" data-filter="done" onclick="setFilter('done')">
+          Bajarildi
+        </button>
+      </div>
+
+      <!-- ACTION BAR (multi-select) -->
+      <div class="action-bar" id="actionBar">
+        <button
+          class="action-btn select-all-btn"
+          onclick="toggleSelectAll()"
+          id="selectAllBtn"
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.5"
+          >
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+          Hammasini tanlash
+        </button>
+        <div class="action-right">
+          <span class="selected-count" id="selectedCount"></span>
+          <button
+            class="action-btn delete-sel-btn"
+            onclick="deleteSelected()"
+            id="deleteSelBtn"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+            >
+              <polyline points="3 6 5 6 21 6" />
+              <path d="M19 6l-1 14H6L5 6" />
+              <path d="M10 11v6M14 11v6" />
+              <path d="M9 6V4h6v2" />
+            </svg>
+            O'chirish
+          </button>
+          <button class="action-btn clear-btn" onclick="openClearModal()">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+            >
+              <polyline points="3 6 5 6 21 6" />
+              <path d="M19 6l-1 14H6L5 6" />
+            </svg>
+            Hammasini
+          </button>
+        </div>
+      </div>
+
+      <!-- PRODUCT LIST -->
+      <div id="productList" class="product-list"></div>
+
+      <!-- EMPTY STATE -->
+      <div class="empty-state" id="emptyState">
+        <div class="empty-emoji">🛍️</div>
+        <h3>Ro'yxat bo'sh</h3>
+        <p>Birinchi mahsulotni qo'shing!</p>
+      </div>
+
+      <!-- INSTALL BANNER -->
+      <div class="install-banner" id="installBanner">
+        <span>📲 Ilovani telefoningizga o'rnating</span>
+        <button onclick="installApp()" class="install-btn">O'rnatish</button>
+        <button onclick="dismissBanner()" class="dismiss-btn">✕</button>
+      </div>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
