@@ -1,15 +1,23 @@
 /* ==========================================
    SPISKA — Xaridlar ro'yxati
-   PWA | localStorage | Dark mode | Filter
+   PWA | Real-time Sync | Dark mode | Filter
 ========================================== */
 
+// ── CONFIG ─────────────────────────────────
+const JSONBIN_BASE = "https://api.jsonbin.io/v3";
+const BIN_KEY      = "spiska_bin_id";
+const POLL_MS      = 3000;
+
 // ── STATE ──────────────────────────────────
-let products    = JSON.parse(localStorage.getItem("spiska_v2") || "[]");
-let deleteIndex = null;
-let editIndex   = null;
+let products      = [];
+let deleteIndex   = null;
+let editIndex     = null;
 let currentFilter = "all";
 let allSelected   = false;
 let deferredPrompt = null;
+let binId         = localStorage.getItem(BIN_KEY) || null;
+let pollTimer     = null;
+let isSyncing     = false;
 
 // ── DOM ────────────────────────────────────
 const form        = document.getElementById("productForm");
@@ -23,9 +31,114 @@ const progressPct = document.getElementById("progressPct");
 const itemCountEl = document.getElementById("itemCount");
 const selCountEl  = document.getElementById("selectedCount");
 
-// ── SAVE ───────────────────────────────────
-function save() {
+// ── SYNC STATUS UI ─────────────────────────
+function setSyncStatus(state) {
+  const dot = document.getElementById("syncDot");
+  const txt = document.getElementById("syncText");
+  if (!dot || !txt) return;
+  dot.className = "sync-dot " + state;
+  const labels = { syncing: "Saqlanmoqda...", ok: "Sinxron", error: "Xato", offline: "Oflayn" };
+  txt.textContent = labels[state] || "";
+}
+
+// ── JSONBIN API ────────────────────────────
+async function createBin(data) {
+  const res = await fetch(`${JSONBIN_BASE}/b`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Bin-Private": "false" },
+    body: JSON.stringify({ products: data }),
+  });
+  if (!res.ok) throw new Error("Bin yaratishda xato");
+  const json = await res.json();
+  return json.metadata.id;
+}
+
+async function readBin() {
+  const res = await fetch(`${JSONBIN_BASE}/b/${binId}/latest`, {
+    headers: { "X-Bin-Meta": "false" },
+  });
+  if (!res.ok) throw new Error("O'qishda xato");
+  return res.json();
+}
+
+async function updateBin(data) {
+  const res = await fetch(`${JSONBIN_BASE}/b/${binId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ products: data }),
+  });
+  if (!res.ok) throw new Error("Saqlashda xato");
+}
+
+// ── SAVE & SYNC ────────────────────────────
+function saveLocal() {
   localStorage.setItem("spiska_v2", JSON.stringify(products));
+}
+
+async function saveAndSync() {
+  saveLocal();
+  isSyncing = true;
+  setSyncStatus("syncing");
+  try {
+    if (!binId) {
+      binId = await createBin(products);
+      localStorage.setItem(BIN_KEY, binId);
+    } else {
+      await updateBin(products);
+    }
+    setSyncStatus("ok");
+  } catch(e) {
+    setSyncStatus("error");
+  } finally {
+    isSyncing = false;
+  }
+}
+
+// ── POLLING ────────────────────────────────
+async function poll() {
+  if (!binId || isSyncing) return;
+  try {
+    const data = await readBin();
+    const remote = data.products || [];
+    const remoteStr = JSON.stringify(remote);
+    const localStr  = JSON.stringify(products);
+    if (remoteStr !== localStr) {
+      products = remote;
+      saveLocal();
+      render();
+    }
+    setSyncStatus("ok");
+  } catch(e) {
+    setSyncStatus(navigator.onLine ? "error" : "offline");
+  }
+}
+
+function startPolling() {
+  if (pollTimer) clearInterval(pollTimer);
+  pollTimer = setInterval(poll, POLL_MS);
+}
+
+// ── INIT SYNC ──────────────────────────────
+async function initSync() {
+  setSyncStatus("syncing");
+  try {
+    if (binId) {
+      const data = await readBin();
+      products = data.products || [];
+      saveLocal();
+    } else {
+      const local = JSON.parse(localStorage.getItem("spiska_v2") || "[]");
+      products = local;
+      binId = await createBin(products);
+      localStorage.setItem(BIN_KEY, binId);
+    }
+    setSyncStatus("ok");
+  } catch(e) {
+    products = JSON.parse(localStorage.getItem("spiska_v2") || "[]");
+    setSyncStatus(navigator.onLine ? "error" : "offline");
+  }
+  render();
+  startPolling();
 }
 
 // ── RENDER ─────────────────────────────────
@@ -38,14 +151,12 @@ function render() {
     return true;
   });
 
-  // Empty state
   if (filtered.length === 0) {
     emptyState.classList.add("show");
   } else {
     emptyState.classList.remove("show");
   }
 
-  // Items
   filtered.forEach((product, fi) => {
     const realIndex = products.indexOf(product);
     const card = document.createElement("div");
@@ -68,7 +179,6 @@ function render() {
       </div>
     `;
 
-    // Stagger animation delay
     card.style.animationDelay = (fi * 0.04) + "s";
     listEl.appendChild(card);
   });
@@ -94,13 +204,8 @@ function updateStats() {
     progressWrap.classList.remove("show");
   }
 
-  // Selected count
   const selCount = products.filter(p => p.selected).length;
-  if (selCount > 0) {
-    selCountEl.textContent = selCount + " ta tanlandi";
-  } else {
-    selCountEl.textContent = "";
-  }
+  selCountEl.textContent = selCount > 0 ? selCount + " ta tanlandi" : "";
 }
 
 // ── ADD ────────────────────────────────────
@@ -109,31 +214,22 @@ form.addEventListener("submit", e => {
   const raw = nameInput.value.trim();
   if (!raw) return;
 
-  // Multiple words → multiple items
   const words = raw.split(/[\s,،]+/).filter(w => w.length > 0);
-
   words.forEach(word => {
-    products.unshift({
-      id:       Date.now() + Math.random(),
-      name:     word,
-      done:     false,
-      selected: false,
-    });
+    products.unshift({ id: Date.now() + Math.random(), name: word, done: false, selected: false });
   });
 
-  save();
+  saveAndSync();
   render();
   nameInput.value = "";
   nameInput.focus();
-
-  // Haptic feedback (if supported)
   if (navigator.vibrate) navigator.vibrate(30);
 });
 
 // ── TOGGLE DONE ────────────────────────────
 function toggleDone(index) {
   products[index].done = !products[index].done;
-  save();
+  saveAndSync();
   render();
   if (navigator.vibrate) navigator.vibrate(20);
 }
@@ -141,14 +237,14 @@ function toggleDone(index) {
 // ── TOGGLE SELECT ──────────────────────────
 function toggleSelect(index) {
   products[index].selected = !products[index].selected;
-  save();
+  saveLocal();
   render();
 }
 
 function toggleSelectAll() {
   allSelected = !allSelected;
   products.forEach(p => p.selected = allSelected);
-  save();
+  saveLocal();
   render();
 }
 
@@ -165,8 +261,7 @@ function updateSelectAll() {
 // ── DELETE SINGLE ──────────────────────────
 function openDeleteModal(index) {
   deleteIndex = index;
-  document.getElementById("modalText").textContent =
-    `"${products[index].name}" — o'chirasizmi?`;
+  document.getElementById("modalText").textContent = `"${products[index].name}" — o'chirasizmi?`;
   document.getElementById("deleteModal").classList.add("open");
 }
 
@@ -180,44 +275,33 @@ document.getElementById("confirmDelete").onclick = () => {
   animateRemove(deleteIndex, () => {
     products.splice(deleteIndex, 1);
     deleteIndex = null;
-    save();
+    saveAndSync();
     render();
   });
   closeModal();
 };
 
 function animateRemove(index, cb) {
-  // Find card by data-index
   const card = listEl.querySelector(`[data-index="${index}"]`);
-  if (card) {
-    card.classList.add("removing");
-    setTimeout(cb, 260);
-  } else {
-    cb();
-  }
+  if (card) { card.classList.add("removing"); setTimeout(cb, 260); } else { cb(); }
 }
 
 // ── DELETE SELECTED ────────────────────────
 function deleteSelected() {
-  const hasSelected = products.some(p => p.selected);
-  if (!hasSelected) return;
+  if (!products.some(p => p.selected)) return;
   products = products.filter(p => !p.selected);
-  save();
+  saveAndSync();
   render();
   if (navigator.vibrate) navigator.vibrate([30, 20, 30]);
 }
 
-// ── CLEAR ALL MODAL ────────────────────────
-function openClearModal() {
-  document.getElementById("clearModal").classList.add("open");
-}
-function closeClearModal() {
-  document.getElementById("clearModal").classList.remove("open");
-}
+// ── CLEAR ALL ──────────────────────────────
+function openClearModal() { document.getElementById("clearModal").classList.add("open"); }
+function closeClearModal() { document.getElementById("clearModal").classList.remove("open"); }
 
 document.getElementById("confirmClear").onclick = () => {
   products = [];
-  save();
+  saveAndSync();
   render();
   closeClearModal();
 };
@@ -240,7 +324,7 @@ document.getElementById("confirmEdit").onclick = () => {
   const val = document.getElementById("editInput").value.trim();
   if (!val) return;
   products[editIndex].name = val;
-  save();
+  saveAndSync();
   render();
   closeEditModal();
 };
@@ -267,7 +351,6 @@ function toggleTheme() {
   localStorage.setItem("spiska_theme", isDark ? "dark" : "light");
 }
 
-// Load saved theme
 (function loadTheme() {
   const saved = localStorage.getItem("spiska_theme");
   if (saved === "dark") {
@@ -277,25 +360,17 @@ function toggleTheme() {
   }
 })();
 
-// ── CLOSE MODALS ON BACKDROP ───────────────
+// ── CLOSE MODALS ───────────────────────────
 document.querySelectorAll(".modal-backdrop").forEach(m => {
   m.addEventListener("click", e => {
-    if (e.target === m) {
-      m.classList.remove("open");
-      deleteIndex = null;
-      editIndex   = null;
-    }
+    if (e.target === m) { m.classList.remove("open"); deleteIndex = null; editIndex = null; }
   });
 });
 
-// ── ESC KEY ────────────────────────────────
 document.addEventListener("keydown", e => {
   if (e.key === "Escape") {
-    document.querySelectorAll(".modal-backdrop.open").forEach(m =>
-      m.classList.remove("open")
-    );
-    deleteIndex = null;
-    editIndex   = null;
+    document.querySelectorAll(".modal-backdrop.open").forEach(m => m.classList.remove("open"));
+    deleteIndex = null; editIndex = null;
   }
 });
 
@@ -303,12 +378,9 @@ document.addEventListener("keydown", e => {
 window.addEventListener("beforeinstallprompt", e => {
   e.preventDefault();
   deferredPrompt = e;
-  // Show banner after 3 seconds
   setTimeout(() => {
     const banner = document.getElementById("installBanner");
-    if (banner && !localStorage.getItem("installDismissed")) {
-      banner.classList.add("show");
-    }
+    if (banner && !localStorage.getItem("installDismissed")) banner.classList.add("show");
   }, 3000);
 });
 
@@ -332,19 +404,13 @@ window.addEventListener("appinstalled", () => {
 
 // ── SERVICE WORKER ─────────────────────────
 if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("sw.js").catch(() => {});
-  });
+  window.addEventListener("load", () => { navigator.serviceWorker.register("sw.js").catch(() => {}); });
 }
 
 // ── HELPER ─────────────────────────────────
 function escHtml(str) {
-  return String(str)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+  return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 }
 
 // ── INIT ───────────────────────────────────
-render();
+initSync();
