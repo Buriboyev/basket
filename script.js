@@ -1,12 +1,13 @@
 /* ==========================================
    Ro'yxat — Firebase Realtime Database
-   Event delegation — no onclick attributes
+   FIX: onclick inline yo'q — addEventListener
 ========================================== */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getDatabase, ref, set, onValue }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
+// ── FIREBASE CONFIG ────────────────────────
 const firebaseConfig = {
   apiKey: "AIzaSyB8w43kVVgzpFFq9DHyr_vGC4t02m0iwrA",
   authDomain: "korzinka-4cafa.firebaseapp.com",
@@ -14,22 +15,23 @@ const firebaseConfig = {
   projectId: "korzinka-4cafa",
   storageBucket: "korzinka-4cafa.firebasestorage.app",
   messagingSenderId: "381504619841",
-  appId: "1:381504619841:web:ad703fcafb29c74d00cdc0",
-  measurementId: "G-RV9Y4ZRM67"
+  appId: "1:381504619841:web:ad703fcafb29c74d00cdc0"
 };
 
 const app   = initializeApp(firebaseConfig);
 const db    = getDatabase(app);
 const dbRef = ref(db, "spiska");
 
-let products       = JSON.parse(localStorage.getItem("spiska_v2") || "[]");
-let deleteIndex    = null;
-let editIndex      = null;
-let currentFilter  = "all";
-let allSelected    = false;
+// ── STATE ──────────────────────────────────
+let products      = JSON.parse(localStorage.getItem("spiska_v2") || "[]");
+let deleteIndex   = null;
+let editIndex     = null;
+let currentFilter = "all";
+let allSelected   = false;
+let isSyncing     = false;
 let deferredPrompt = null;
-let isSyncing      = false;
 
+// ── DOM ────────────────────────────────────
 const form         = document.getElementById("productForm");
 const nameInput    = document.getElementById("nameInput");
 const listEl       = document.getElementById("productList");
@@ -41,6 +43,7 @@ const progressPct  = document.getElementById("progressPct");
 const itemCountEl  = document.getElementById("itemCount");
 const selCountEl   = document.getElementById("selectedCount");
 
+// ── SYNC STATUS ────────────────────────────
 function setSyncStatus(state) {
   const dot = document.getElementById("syncDot");
   const txt = document.getElementById("syncText");
@@ -50,10 +53,12 @@ function setSyncStatus(state) {
   txt.textContent = labels[state] || "";
 }
 
+// ── LOCAL SAVE ─────────────────────────────
 function saveLocal() {
   localStorage.setItem("spiska_v2", JSON.stringify(products));
 }
 
+// ── FIREBASE WRITE ─────────────────────────
 async function saveAndSync() {
   saveLocal();
   isSyncing = true;
@@ -70,11 +75,12 @@ async function saveAndSync() {
   }
 }
 
+// ── REAL-TIME LISTENER ─────────────────────
 function initSync() {
   setSyncStatus("syncing");
   onValue(dbRef, (snapshot) => {
     if (isSyncing) return;
-    const data   = snapshot.val();
+    const data = snapshot.val();
     const remote = Array.isArray(data) ? data : [];
     const selectedMap = {};
     products.forEach(p => { if (p.id) selectedMap[p.id] = p.selected; });
@@ -88,6 +94,16 @@ function initSync() {
   });
 }
 
+// ── HELPER ─────────────────────────────────
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;");
+}
+
+// ── RENDER ─────────────────────────────────
 function render() {
   listEl.innerHTML = "";
   const filtered = products.filter(p => {
@@ -129,6 +145,19 @@ function render() {
   updateSelectAll();
 }
 
+// ── EVENT DELEGATION (card buttons) ────────
+listEl.addEventListener("click", e => {
+  const el = e.target.closest("[data-action]");
+  if (!el) return;
+  const action = el.dataset.action;
+  const index  = parseInt(el.dataset.index, 10);
+  if (action === "done")   toggleDone(index);
+  if (action === "select") toggleSelect(index);
+  if (action === "edit")   openEdit(index);
+  if (action === "delete") openDeleteModal(index);
+});
+
+// ── STATS ───────────────────────────────────
 function updateStats() {
   const total = products.length;
   const done  = products.filter(p => p.done).length;
@@ -141,18 +170,6 @@ function updateStats() {
   const sel = products.filter(p => p.selected).length;
   selCountEl.textContent = sel > 0 ? sel + " ta tanlandi" : "";
 }
-
-// ── EVENT DELEGATION — list ────────────────
-listEl.addEventListener("click", e => {
-  const el = e.target.closest("[data-action]");
-  if (!el) return;
-  const action = el.dataset.action;
-  const i = parseInt(el.dataset.index, 10);
-  if (action === "done")   toggleDone(i);
-  if (action === "select") toggleSelect(i);
-  if (action === "edit")   openEdit(i);
-  if (action === "delete") openDeleteModal(i);
-});
 
 // ── FORM ───────────────────────────────────
 form.addEventListener("submit", e => {
@@ -167,15 +184,23 @@ form.addEventListener("submit", e => {
   if (navigator.vibrate) navigator.vibrate(30);
 });
 
-function toggleDone(i)   { products[i].done = !products[i].done; saveAndSync(); render(); if (navigator.vibrate) navigator.vibrate(20); }
-function toggleSelect(i) { products[i].selected = !products[i].selected; saveLocal(); render(); }
+// ── TOGGLE DONE / SELECT ───────────────────
+function toggleDone(i) {
+  products[i].done = !products[i].done;
+  saveAndSync(); render();
+  if (navigator.vibrate) navigator.vibrate(20);
+}
+function toggleSelect(i) {
+  products[i].selected = !products[i].selected;
+  saveLocal(); render();
+}
 
+// ── SELECT ALL ─────────────────────────────
 function toggleSelectAll() {
   allSelected = !allSelected;
   products.forEach(p => p.selected = allSelected);
   saveLocal(); render();
 }
-
 function updateSelectAll() {
   const btn = document.getElementById("selectAllBtn");
   if (!btn) return;
@@ -185,39 +210,47 @@ function updateSelectAll() {
     : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Hammasini tanlash`;
   allSelected = allSel;
 }
+document.getElementById("selectAllBtn").addEventListener("click", toggleSelectAll);
 
-// ── DELETE ─────────────────────────────────
+// ── DELETE SELECTED ─────────────────────────
+document.getElementById("deleteSelBtn").addEventListener("click", () => {
+  if (!products.some(p => p.selected)) return;
+  products = products.filter(p => !p.selected);
+  saveAndSync(); render();
+});
+
+// ── DELETE MODAL ───────────────────────────
 function openDeleteModal(i) {
   deleteIndex = i;
   document.getElementById("modalText").textContent = `"${products[i].name}" — o'chirasizmi?`;
   document.getElementById("deleteModal").classList.add("open");
 }
-function closeModal() {
+function closeDeleteModal() {
   document.getElementById("deleteModal").classList.remove("open");
   deleteIndex = null;
 }
+document.getElementById("cancelDelete").addEventListener("click", closeDeleteModal);
 document.getElementById("confirmDelete").addEventListener("click", () => {
   if (deleteIndex === null) return;
   const card = listEl.querySelector(`[data-index="${deleteIndex}"]`);
   const doDelete = () => { products.splice(deleteIndex, 1); deleteIndex = null; saveAndSync(); render(); };
   if (card) { card.classList.add("removing"); setTimeout(doDelete, 260); } else doDelete();
-  closeModal();
+  closeDeleteModal();
 });
 
-function deleteSelected() {
-  if (!products.some(p => p.selected)) return;
-  products = products.filter(p => !p.selected);
-  saveAndSync(); render();
-}
-
-// ── CLEAR ──────────────────────────────────
-function openClearModal()  { document.getElementById("clearModal").classList.add("open"); }
-function closeClearModal() { document.getElementById("clearModal").classList.remove("open"); }
+// ── CLEAR MODAL ────────────────────────────
+document.getElementById("clearAllBtn").addEventListener("click", () => {
+  document.getElementById("clearModal").classList.add("open");
+});
+document.getElementById("cancelClear").addEventListener("click", () => {
+  document.getElementById("clearModal").classList.remove("open");
+});
 document.getElementById("confirmClear").addEventListener("click", () => {
-  products = []; saveAndSync(); render(); closeClearModal();
+  products = []; saveAndSync(); render();
+  document.getElementById("clearModal").classList.remove("open");
 });
 
-// ── EDIT ───────────────────────────────────
+// ── EDIT MODAL ─────────────────────────────
 function openEdit(i) {
   editIndex = i;
   document.getElementById("editInput").value = products[i].name;
@@ -228,6 +261,7 @@ function closeEditModal() {
   document.getElementById("editModal").classList.remove("open");
   editIndex = null;
 }
+document.getElementById("cancelEdit").addEventListener("click", closeEditModal);
 document.getElementById("confirmEdit").addEventListener("click", () => {
   if (editIndex === null) return;
   const val = document.getElementById("editInput").value.trim();
@@ -241,27 +275,36 @@ document.getElementById("editInput").addEventListener("keydown", e => {
 });
 
 // ── FILTER TABS ────────────────────────────
-document.getElementById("filterTabs").addEventListener("click", e => {
-  const tab = e.target.closest(".tab");
-  if (!tab) return;
-  currentFilter = tab.dataset.filter;
-  document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.filter === currentFilter));
-  render();
+document.querySelectorAll(".tab").forEach(tab => {
+  tab.addEventListener("click", () => {
+    currentFilter = tab.dataset.filter;
+    document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t === tab));
+    render();
+  });
 });
 
-// ── ACTION BAR ─────────────────────────────
-document.getElementById("selectAllBtn").addEventListener("click", toggleSelectAll);
-document.getElementById("deleteSelBtn").addEventListener("click", deleteSelected);
-document.getElementById("clearAllBtn").addEventListener("click", openClearModal);
+// ── THEME ──────────────────────────────────
+function applyTheme() {
+  const isDark = document.body.classList.contains("dark");
+  document.getElementById("themeIcon").textContent = isDark ? "☀️" : "🌙";
+}
+if (localStorage.getItem("spiska_theme") === "dark") {
+  document.body.classList.add("dark");
+}
+applyTheme();
+document.getElementById("themeBtn").addEventListener("click", () => {
+  document.body.classList.toggle("dark");
+  localStorage.setItem("spiska_theme", document.body.classList.contains("dark") ? "dark" : "light");
+  applyTheme();
+});
 
-// ── MODAL CANCEL BUTTONS ───────────────────
-document.getElementById("cancelDelete").addEventListener("click", closeModal);
-document.getElementById("cancelEdit").addEventListener("click", closeEditModal);
-document.getElementById("cancelClear").addEventListener("click", closeClearModal);
-
+// ── MODAL BACKDROP CLICK ───────────────────
 document.querySelectorAll(".modal-backdrop").forEach(m => {
   m.addEventListener("click", e => {
-    if (e.target === m) { m.classList.remove("open"); deleteIndex = null; editIndex = null; }
+    if (e.target === m) {
+      m.classList.remove("open");
+      deleteIndex = null; editIndex = null;
+    }
   });
 });
 document.addEventListener("keydown", e => {
@@ -269,24 +312,10 @@ document.addEventListener("keydown", e => {
     document.querySelectorAll(".modal-backdrop.open").forEach(m => m.classList.remove("open"));
 });
 
-// ── THEME ──────────────────────────────────
-document.getElementById("themeBtn").addEventListener("click", () => {
-  document.body.classList.toggle("dark");
-  const isDark = document.body.classList.contains("dark");
-  document.getElementById("themeIcon").textContent = isDark ? "☀️" : "🌙";
-  localStorage.setItem("spiska_theme", isDark ? "dark" : "light");
-});
-(function () {
-  if (localStorage.getItem("spiska_theme") === "dark") {
-    document.body.classList.add("dark");
-    const icon = document.getElementById("themeIcon");
-    if (icon) icon.textContent = "☀️";
-  }
-})();
-
 // ── PWA INSTALL ────────────────────────────
 window.addEventListener("beforeinstallprompt", e => {
-  e.preventDefault(); deferredPrompt = e;
+  e.preventDefault();
+  deferredPrompt = e;
   setTimeout(() => {
     const b = document.getElementById("installBanner");
     if (b && !localStorage.getItem("installDismissed")) b.classList.add("show");
@@ -304,17 +333,14 @@ document.getElementById("dismissBtn").addEventListener("click", () => {
   document.getElementById("installBanner").classList.remove("show");
   localStorage.setItem("installDismissed", "1");
 });
-window.addEventListener("appinstalled", () =>
-  document.getElementById("installBanner").classList.remove("show")
-);
+window.addEventListener("appinstalled", () => {
+  document.getElementById("installBanner").classList.remove("show");
+});
 
 // ── SERVICE WORKER ─────────────────────────
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
 }
 
-function escHtml(str) {
-  return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
-}
-
+// ── START ──────────────────────────────────
 initSync();
