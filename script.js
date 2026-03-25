@@ -298,3 +298,17 @@ function escHtml(str) {
 
 // ── START ──────────────────────────────────
 initSync();
+window.toggleDone = toggleDone;
+window.toggleSelect = toggleSelect;
+window.toggleSelectAll = toggleSelectAll;
+window.openDeleteModal = openDeleteModal;
+window.closeModal = closeModal;
+window.deleteSelected = deleteSelected;
+window.openClearModal = openClearModal;
+window.closeClearModal = closeClearModal;
+window.openEdit = openEdit;
+window.closeEditModal = closeEditModal;
+window.setFilter = setFilter;
+window.toggleTheme = toggleTheme;
+window.installApp = installApp;
+window.dismissBanner = dismissBanner;
