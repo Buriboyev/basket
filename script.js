@@ -1,24 +1,9 @@
 /* ==========================================
-   SPISKA — Xaridlar ro'yxati
-   GitHub Gist orqali real-time sync
+   SPISKA — Firebase Realtime Database sync
 ========================================== */
 
-// ══════════════════════════════════════════
-//  BU YERNI TO'LDIRING:
-//  1. github.com → Settings → Developer settings
-//     → Personal access tokens → Tokens (classic)
-//     → Generate new token → faqat "gist" belgini qo'ying
-//  2. Yangi Gist yarating: gist.github.com
-//     → bitta fayl "spiska.json" deb nomlang, ichiga [] yozing
-//     → "Create public gist" bosing
-//     → URL dagi ID ni oling (32 belgili)
-// ══════════════════════════════════════════
-const GITHUB_TOKEN = "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";   // ghp_xxxx...
-const GIST_ID      = "76c7dae45338f3b47baad5109ea7d3f6"; // 32 belgili hex
-// ══════════════════════════════════════════
-
-const POLL_MS  = 4000;
-const FILENAME = "spiska.json";
+const FIREBASE_URL = "https://korzinka-4cafa-default-rtdb.firebaseio.com";
+const POLL_MS = 3000;
 
 let products      = JSON.parse(localStorage.getItem("spiska_v2") || "[]");
 let deleteIndex   = null;
@@ -26,55 +11,47 @@ let editIndex     = null;
 let currentFilter = "all";
 let allSelected   = false;
 let deferredPrompt = null;
-let pollTimer     = null;
 let isSyncing     = false;
-let lastEtag      = "";
+let lastHash      = "";
 
-const form        = document.getElementById("productForm");
-const nameInput   = document.getElementById("nameInput");
-const listEl      = document.getElementById("productList");
-const emptyState  = document.getElementById("emptyState");
-const progressWrap= document.getElementById("progressWrap");
-const progressFill= document.getElementById("progressFill");
-const doneCountEl = document.getElementById("doneCount");
-const progressPct = document.getElementById("progressPct");
-const itemCountEl = document.getElementById("itemCount");
-const selCountEl  = document.getElementById("selectedCount");
+const form         = document.getElementById("productForm");
+const nameInput    = document.getElementById("nameInput");
+const listEl       = document.getElementById("productList");
+const emptyState   = document.getElementById("emptyState");
+const progressWrap = document.getElementById("progressWrap");
+const progressFill = document.getElementById("progressFill");
+const doneCountEl  = document.getElementById("doneCount");
+const progressPct  = document.getElementById("progressPct");
+const itemCountEl  = document.getElementById("itemCount");
+const selCountEl   = document.getElementById("selectedCount");
 
-// ── SYNC STATUS ────────────────────────────
 function setSyncStatus(state) {
   const dot = document.getElementById("syncDot");
   const txt = document.getElementById("syncText");
   if (!dot || !txt) return;
   dot.className = "sync-dot " + state;
-  txt.textContent = { syncing:"Saqlanmoqda...", ok:"Sinxron ✓", error:"Xato!", offline:"Oflayn" }[state] || "";
+  const labels = { syncing:"Saqlanmoqda...", ok:"Sinxron ✓", error:"Xato!", offline:"Oflayn" };
+  txt.textContent = labels[state] || "";
 }
 
-// ── GIST API ───────────────────────────────
-const GIST_URL = `https://api.github.com/gists/${GIST_ID}`;
-const HEADERS  = {
-  "Authorization": `token ${GITHUB_TOKEN}`,
-  "Accept": "application/vnd.github.v3+json",
-};
+const DB_URL = FIREBASE_URL + "/spiska.json";
 
-async function gistRead() {
-  const res = await fetch(GIST_URL, { headers: HEADERS, cache: "no-store" });
+async function dbRead() {
+  const res = await fetch(DB_URL + "?t=" + Date.now(), { cache: "no-store" });
   if (!res.ok) throw new Error("Read " + res.status);
-  const json = await res.json();
-  const content = json.files[FILENAME]?.content || "[]";
-  return JSON.parse(content);
+  const data = await res.json();
+  return Array.isArray(data) ? data : [];
 }
 
-async function gistWrite(data) {
-  const res = await fetch(GIST_URL, {
-    method: "PATCH",
-    headers: { ...HEADERS, "Content-Type": "application/json" },
-    body: JSON.stringify({ files: { [FILENAME]: { content: JSON.stringify(data) } } }),
+async function dbWrite(data) {
+  const res = await fetch(DB_URL, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
   });
   if (!res.ok) throw new Error("Write " + res.status);
 }
 
-// ── SAVE & SYNC ────────────────────────────
 function saveLocal() {
   localStorage.setItem("spiska_v2", JSON.stringify(products));
 }
@@ -84,7 +61,8 @@ async function saveAndSync() {
   isSyncing = true;
   setSyncStatus("syncing");
   try {
-    await gistWrite(products);
+    await dbWrite(products);
+    lastHash = JSON.stringify(products);
     setSyncStatus("ok");
   } catch(e) {
     setSyncStatus(navigator.onLine ? "error" : "offline");
@@ -93,14 +71,14 @@ async function saveAndSync() {
   }
 }
 
-// ── POLLING ────────────────────────────────
 async function poll() {
   if (isSyncing) return;
   try {
-    const remote = await gistRead();
+    const remote = await dbRead();
     const remoteStr = JSON.stringify(remote);
-    if (remoteStr !== JSON.stringify(products)) {
+    if (remoteStr !== lastHash) {
       products = remote;
+      lastHash = remoteStr;
       saveLocal();
       render();
     }
@@ -113,17 +91,18 @@ async function poll() {
 async function initSync() {
   setSyncStatus("syncing");
   try {
-    products = await gistRead();
+    const remote = await dbRead();
+    products = remote;
+    lastHash = JSON.stringify(products);
     saveLocal();
     setSyncStatus("ok");
   } catch(e) {
     setSyncStatus(navigator.onLine ? "error" : "offline");
   }
   render();
-  pollTimer = setInterval(poll, POLL_MS);
+  setInterval(poll, POLL_MS);
 }
 
-// ── RENDER ─────────────────────────────────
 function render() {
   listEl.innerHTML = "";
   const filtered = products.filter(p => {
@@ -174,7 +153,7 @@ form.addEventListener("submit", e => {
   e.preventDefault();
   const raw = nameInput.value.trim();
   if (!raw) return;
-  raw.split(/[\s,،]+/).filter(w => w).forEach(word => {
+  raw.split(/[\n,،]+/).map(w => w.trim()).filter(w => w).forEach(word => {
     products.unshift({ id: Date.now() + Math.random(), name: word, done: false, selected: false });
   });
   saveAndSync(); render();
@@ -266,7 +245,7 @@ document.querySelectorAll(".modal-backdrop").forEach(m => {
   m.addEventListener("click", e => { if (e.target === m) { m.classList.remove("open"); deleteIndex = null; editIndex = null; } });
 });
 document.addEventListener("keydown", e => {
-  if (e.key === "Escape") { document.querySelectorAll(".modal-backdrop.open").forEach(m => m.classList.remove("open")); }
+  if (e.key === "Escape") document.querySelectorAll(".modal-backdrop.open").forEach(m => m.classList.remove("open"));
 });
 
 window.addEventListener("beforeinstallprompt", e => {
@@ -292,5 +271,4 @@ function escHtml(str) {
   return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 }
 
-// START
 initSync();
