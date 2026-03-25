@@ -1,32 +1,35 @@
 /* ==========================================
-   SPISKA — Xaridlar ro'yxati  
-   Firebase Realtime Database
+   SPISKA — Xaridlar ro'yxati
+   GitHub Gist orqali real-time sync
 ========================================== */
 
-// ── FIREBASE CONFIG ────────────────────────
-const firebaseConfig = {
-  apiKey: "AIzaSyB8w43kVVgzpFFq9DHyr_vGC4t02m0iwrA",
-  authDomain: "korzinka-4cafa.firebaseapp.com",
-  databaseURL: "https://korzinka-4cafa-default-rtdb.firebaseio.com",
-  projectId: "korzinka-4cafa",
-  storageBucket: "korzinka-4cafa.firebasestorage.app",
-  messagingSenderId: "381504619841",
-  appId: "1:381504619841:web:ad703fcafb29c74d00cdc0",
-};
+// ══════════════════════════════════════════
+//  BU YERNI TO'LDIRING:
+//  1. github.com → Settings → Developer settings
+//     → Personal access tokens → Tokens (classic)
+//     → Generate new token → faqat "gist" belgini qo'ying
+//  2. Yangi Gist yarating: gist.github.com
+//     → bitta fayl "spiska.json" deb nomlang, ichiga [] yozing
+//     → "Create public gist" bosing
+//     → URL dagi ID ni oling (32 belgili)
+// ══════════════════════════════════════════
+const GITHUB_TOKEN = "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";   // ghp_xxxx...
+const GIST_ID      = "76c7dae45338f3b47baad5109ea7d3f6 "; // 32 belgili hex
+// ══════════════════════════════════════════
 
-const DB_PATH = "spiska/products";
+const POLL_MS  = 4000;
+const FILENAME = "spiska.json";
 
-// ── STATE ──────────────────────────────────
 let products      = JSON.parse(localStorage.getItem("spiska_v2") || "[]");
 let deleteIndex   = null;
 let editIndex     = null;
 let currentFilter = "all";
 let allSelected   = false;
 let deferredPrompt = null;
-let dbRef         = null;
+let pollTimer     = null;
 let isSyncing     = false;
+let lastEtag      = "";
 
-// ── DOM ────────────────────────────────────
 const form        = document.getElementById("productForm");
 const nameInput   = document.getElementById("nameInput");
 const listEl      = document.getElementById("productList");
@@ -38,93 +41,86 @@ const progressPct = document.getElementById("progressPct");
 const itemCountEl = document.getElementById("itemCount");
 const selCountEl  = document.getElementById("selectedCount");
 
-// ── SYNC STATUS UI ─────────────────────────
-function setSyncStatus(state, msg) {
+// ── SYNC STATUS ────────────────────────────
+function setSyncStatus(state) {
   const dot = document.getElementById("syncDot");
   const txt = document.getElementById("syncText");
   if (!dot || !txt) return;
   dot.className = "sync-dot " + state;
-  const labels = { syncing: "Saqlanmoqda...", ok: "Sinxron ✓", error: "Xato!", offline: "Oflayn" };
-  txt.textContent = msg || labels[state] || "";
+  txt.textContent = { syncing:"Saqlanmoqda...", ok:"Sinxron ✓", error:"Xato!", offline:"Oflayn" }[state] || "";
 }
 
-// ── SHOW ERROR on screen ───────────────────
-function showError(msg) {
-  let box = document.getElementById("debugBox");
-  if (!box) {
-    box = document.createElement("div");
-    box.id = "debugBox";
-    box.style.cssText = "position:fixed;top:0;left:0;right:0;background:#ef4444;color:#fff;padding:12px 16px;font-size:13px;font-weight:700;z-index:9999;word-break:break-all;cursor:pointer;";
-    box.onclick = () => box.remove();
-    document.body.appendChild(box);
-  }
-  box.textContent = "❌ " + msg + "  (bosing yopish uchun)";
+// ── GIST API ───────────────────────────────
+const GIST_URL = `https://api.github.com/gists/${GIST_ID}`;
+const HEADERS  = {
+  "Authorization": `token ${GITHUB_TOKEN}`,
+  "Accept": "application/vnd.github.v3+json",
+};
+
+async function gistRead() {
+  const res = await fetch(GIST_URL, { headers: HEADERS, cache: "no-store" });
+  if (!res.ok) throw new Error("Read " + res.status);
+  const json = await res.json();
+  const content = json.files[FILENAME]?.content || "[]";
+  return JSON.parse(content);
 }
 
-// ── FIREBASE INIT ──────────────────────────
-function initFirebase() {
-  try {
-    // Tekshiruv: firebase ob'ekti bormi?
-    if (typeof firebase === "undefined") {
-      showError("Firebase SDK yuklanmadi! Internet aloqasini tekshiring.");
-      setSyncStatus("error");
-      render();
-      return;
-    }
-
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-    dbRef = db.ref(DB_PATH);
-
-    // Real-time listener
-    dbRef.on("value", (snapshot) => {
-      if (isSyncing) return;
-      const val = snapshot.val();
-      if (val === null) {
-        products = [];
-      } else if (Array.isArray(val)) {
-        products = val;
-      } else {
-        products = Object.values(val);
-      }
-      localStorage.setItem("spiska_v2", JSON.stringify(products));
-      render();
-      setSyncStatus("ok");
-    }, (error) => {
-      // Bu yerda xato kodi va xabari ko'rinadi
-      showError("DB xato: " + error.code + " — " + error.message);
-      setSyncStatus("error");
-    });
-
-    setSyncStatus("ok");
-
-  } catch(e) {
-    showError("Init xato: " + e.message);
-    setSyncStatus("error");
-  }
-
-  render();
+async function gistWrite(data) {
+  const res = await fetch(GIST_URL, {
+    method: "PATCH",
+    headers: { ...HEADERS, "Content-Type": "application/json" },
+    body: JSON.stringify({ files: { [FILENAME]: { content: JSON.stringify(data) } } }),
+  });
+  if (!res.ok) throw new Error("Write " + res.status);
 }
 
-// ── SAVE ───────────────────────────────────
+// ── SAVE & SYNC ────────────────────────────
 function saveLocal() {
   localStorage.setItem("spiska_v2", JSON.stringify(products));
 }
 
 async function saveAndSync() {
   saveLocal();
-  if (!dbRef) return;
   isSyncing = true;
   setSyncStatus("syncing");
   try {
-    await dbRef.set(products);
+    await gistWrite(products);
     setSyncStatus("ok");
   } catch(e) {
-    showError("Saqlash xato: " + e.message);
-    setSyncStatus("error");
+    setSyncStatus(navigator.onLine ? "error" : "offline");
   } finally {
-    setTimeout(() => { isSyncing = false; }, 600);
+    setTimeout(() => { isSyncing = false; }, 500);
   }
+}
+
+// ── POLLING ────────────────────────────────
+async function poll() {
+  if (isSyncing) return;
+  try {
+    const remote = await gistRead();
+    const remoteStr = JSON.stringify(remote);
+    if (remoteStr !== JSON.stringify(products)) {
+      products = remote;
+      saveLocal();
+      render();
+    }
+    setSyncStatus("ok");
+  } catch(e) {
+    setSyncStatus(navigator.onLine ? "error" : "offline");
+  }
+}
+
+async function initSync() {
+  setSyncStatus("syncing");
+  try {
+    products = await gistRead();
+    saveLocal();
+    setSyncStatus("ok");
+  } catch(e) {
+    setSyncStatus(navigator.onLine ? "error" : "offline");
+  }
+  render();
+  pollTimer = setInterval(poll, POLL_MS);
 }
 
 // ── RENDER ─────────────────────────────────
@@ -135,8 +131,7 @@ function render() {
     if (currentFilter === "active") return !p.done;
     return true;
   });
-  if (filtered.length === 0) emptyState.classList.add("show");
-  else emptyState.classList.remove("show");
+  emptyState.classList.toggle("show", filtered.length === 0);
 
   filtered.forEach((product, fi) => {
     const realIndex = products.indexOf(product);
@@ -162,7 +157,6 @@ function render() {
   updateSelectAll();
 }
 
-// ── STATS ──────────────────────────────────
 function updateStats() {
   const total = products.length;
   const done  = products.filter(p => p.done).length;
@@ -171,18 +165,16 @@ function updateStats() {
   doneCountEl.textContent = done + " ta bajarildi";
   progressPct.textContent = pct + "%";
   progressFill.style.width = pct + "%";
-  if (total > 0) progressWrap.classList.add("show");
-  else progressWrap.classList.remove("show");
-  const selCount = products.filter(p => p.selected).length;
-  selCountEl.textContent = selCount > 0 ? selCount + " ta tanlandi" : "";
+  progressWrap.classList.toggle("show", total > 0);
+  const sel = products.filter(p => p.selected).length;
+  selCountEl.textContent = sel > 0 ? sel + " ta tanlandi" : "";
 }
 
-// ── ADD ────────────────────────────────────
 form.addEventListener("submit", e => {
   e.preventDefault();
   const raw = nameInput.value.trim();
   if (!raw) return;
-  raw.split(/[\s,،]+/).filter(w => w.length > 0).forEach(word => {
+  raw.split(/[\s,،]+/).filter(w => w).forEach(word => {
     products.unshift({ id: Date.now() + Math.random(), name: word, done: false, selected: false });
   });
   saveAndSync(); render();
@@ -190,15 +182,8 @@ form.addEventListener("submit", e => {
   if (navigator.vibrate) navigator.vibrate(30);
 });
 
-// ── TOGGLE DONE ────────────────────────────
-function toggleDone(index) {
-  products[index].done = !products[index].done;
-  saveAndSync(); render();
-  if (navigator.vibrate) navigator.vibrate(20);
-}
-
-// ── TOGGLE SELECT ──────────────────────────
-function toggleSelect(index) { products[index].selected = !products[index].selected; saveLocal(); render(); }
+function toggleDone(i) { products[i].done = !products[i].done; saveAndSync(); render(); if (navigator.vibrate) navigator.vibrate(20); }
+function toggleSelect(i) { products[i].selected = !products[i].selected; saveLocal(); render(); }
 function toggleSelectAll() {
   allSelected = !allSelected;
   products.forEach(p => p.selected = allSelected);
@@ -214,39 +199,33 @@ function updateSelectAll() {
   allSelected = allSel;
 }
 
-// ── DELETE ─────────────────────────────────
-function openDeleteModal(index) {
-  deleteIndex = index;
-  document.getElementById("modalText").textContent = `"${products[index].name}" — o'chirasizmi?`;
+function openDeleteModal(i) {
+  deleteIndex = i;
+  document.getElementById("modalText").textContent = `"${products[i].name}" — o'chirasizmi?`;
   document.getElementById("deleteModal").classList.add("open");
 }
 function closeModal() { document.getElementById("deleteModal").classList.remove("open"); deleteIndex = null; }
 document.getElementById("confirmDelete").onclick = () => {
   if (deleteIndex === null) return;
-  animateRemove(deleteIndex, () => { products.splice(deleteIndex, 1); deleteIndex = null; saveAndSync(); render(); });
+  const card = listEl.querySelector(`[data-index="${deleteIndex}"]`);
+  const doDelete = () => { products.splice(deleteIndex, 1); deleteIndex = null; saveAndSync(); render(); };
+  if (card) { card.classList.add("removing"); setTimeout(doDelete, 260); } else doDelete();
   closeModal();
 };
-function animateRemove(index, cb) {
-  const card = listEl.querySelector(`[data-index="${index}"]`);
-  if (card) { card.classList.add("removing"); setTimeout(cb, 260); } else cb();
-}
 
-// ── DELETE SELECTED ────────────────────────
 function deleteSelected() {
   if (!products.some(p => p.selected)) return;
   products = products.filter(p => !p.selected);
   saveAndSync(); render();
 }
 
-// ── CLEAR ALL ──────────────────────────────
 function openClearModal()  { document.getElementById("clearModal").classList.add("open"); }
 function closeClearModal() { document.getElementById("clearModal").classList.remove("open"); }
 document.getElementById("confirmClear").onclick = () => { products = []; saveAndSync(); render(); closeClearModal(); };
 
-// ── EDIT ───────────────────────────────────
-function openEdit(index) {
-  editIndex = index;
-  document.getElementById("editInput").value = products[index].name;
+function openEdit(i) {
+  editIndex = i;
+  document.getElementById("editInput").value = products[i].name;
   document.getElementById("editModal").classList.add("open");
   setTimeout(() => document.getElementById("editInput").focus(), 100);
 }
@@ -263,21 +242,19 @@ document.getElementById("editInput").addEventListener("keydown", e => {
   if (e.key === "Escape") closeEditModal();
 });
 
-// ── FILTER ─────────────────────────────────
 function setFilter(filter) {
   currentFilter = filter;
   document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.filter === filter));
   render();
 }
 
-// ── THEME ──────────────────────────────────
 function toggleTheme() {
   document.body.classList.toggle("dark");
   const isDark = document.body.classList.contains("dark");
   document.getElementById("themeIcon").textContent = isDark ? "☀️" : "🌙";
   localStorage.setItem("spiska_theme", isDark ? "dark" : "light");
 }
-(function loadTheme() {
+(function() {
   if (localStorage.getItem("spiska_theme") === "dark") {
     document.body.classList.add("dark");
     const icon = document.getElementById("themeIcon");
@@ -285,20 +262,18 @@ function toggleTheme() {
   }
 })();
 
-// ── MODALS ─────────────────────────────────
 document.querySelectorAll(".modal-backdrop").forEach(m => {
   m.addEventListener("click", e => { if (e.target === m) { m.classList.remove("open"); deleteIndex = null; editIndex = null; } });
 });
 document.addEventListener("keydown", e => {
-  if (e.key === "Escape") { document.querySelectorAll(".modal-backdrop.open").forEach(m => m.classList.remove("open")); deleteIndex = null; editIndex = null; }
+  if (e.key === "Escape") { document.querySelectorAll(".modal-backdrop.open").forEach(m => m.classList.remove("open")); }
 });
 
-// ── PWA ────────────────────────────────────
 window.addEventListener("beforeinstallprompt", e => {
   e.preventDefault(); deferredPrompt = e;
   setTimeout(() => {
-    const banner = document.getElementById("installBanner");
-    if (banner && !localStorage.getItem("installDismissed")) banner.classList.add("show");
+    const b = document.getElementById("installBanner");
+    if (b && !localStorage.getItem("installDismissed")) b.classList.add("show");
   }, 3000);
 });
 function installApp() {
@@ -309,16 +284,13 @@ function installApp() {
 function dismissBanner() { document.getElementById("installBanner").classList.remove("show"); localStorage.setItem("installDismissed", "1"); }
 window.addEventListener("appinstalled", () => document.getElementById("installBanner").classList.remove("show"));
 
-// ── SERVICE WORKER ─────────────────────────
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
 }
 
-// ── HELPER ─────────────────────────────────
 function escHtml(str) {
   return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 }
 
-// ── START ───────────────────────────────────
-setSyncStatus("syncing");
-window.onFirebaseReady = initFirebase;
+// START
+initSync();
