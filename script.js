@@ -13,7 +13,7 @@
 //     → "Create public gist" bosing
 //     → URL dagi ID ni oling (32 belgili)
 // ══════════════════════════════════════════
-const GITHUB_TOKEN = "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";   // ghp_xxxx...
+const GITHUB_TOKEN = "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";   // ghp_xxxx...
 const GIST_ID      = "76c7dae45338f3b47baad5109ea7d3f6"; // 32 belgili hex
 // ══════════════════════════════════════════
 
