@@ -57,7 +57,6 @@
     </div>
 
     <div class="app">
-      <!-- HEADER -->
       <header class="app-header">
         <div class="header-left">
           <div class="app-logo">🛒</div>
@@ -77,7 +76,6 @@
         </div>
       </header>
 
-      <!-- PROGRESS BAR -->
       <div class="progress-wrap" id="progressWrap">
         <div class="progress-info">
           <span id="doneCount">0 ta bajarildi</span>
@@ -88,16 +86,13 @@
         </div>
       </div>
 
-      <!-- INPUT AREA -->
       <div class="input-area">
         <form id="productForm">
           <div class="input-wrap">
             <span class="input-icon">📝</span>
-            <input type="text" id="nameInput" placeholder="Mahsulot qo'shing..."
-              autocomplete="off" autocorrect="off" spellcheck="false" />
+            <input type="text" id="nameInput" placeholder="Mahsulot qo'shing..." autocomplete="off" autocorrect="off" spellcheck="false" />
             <button type="submit" class="add-btn" aria-label="Qo'shish">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="12" y1="5" x2="12" y2="19" />
                 <line x1="5" y1="12" x2="19" y2="12" />
               </svg>
@@ -106,57 +101,42 @@
         </form>
       </div>
 
-      <!-- FILTER TABS -->
       <div class="filter-tabs" id="filterTabs">
         <button class="tab active" data-filter="all">Hammasi</button>
         <button class="tab" data-filter="active">Qolgan</button>
         <button class="tab" data-filter="done">Bajarildi</button>
       </div>
 
-      <!-- ACTION BAR -->
       <div class="action-bar" id="actionBar">
         <button class="action-btn select-all-btn" id="selectAllBtn">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <polyline points="20 6 9 17 4 12" />
-          </svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12" /></svg>
           Hammasini tanlash
         </button>
         <div class="action-right">
           <span class="selected-count" id="selectedCount"></span>
           <button class="action-btn delete-sel-btn" id="deleteSelBtn">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <polyline points="3 6 5 6 21 6" />
-              <path d="M19 6l-1 14H6L5 6" />
-              <path d="M10 11v6M14 11v6" />
-              <path d="M9 6V4h6v2" />
-            </svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" /><path d="M9 6V4h6v2" /></svg>
             O'chirish
           </button>
           <button class="action-btn clear-btn" id="clearAllBtn">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <polyline points="3 6 5 6 21 6" />
-              <path d="M19 6l-1 14H6L5 6" />
-            </svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /></svg>
             Hammasini
           </button>
         </div>
       </div>
 
-      <!-- PRODUCT LIST -->
       <div id="productList" class="product-list"></div>
 
-      <!-- EMPTY STATE -->
       <div class="empty-state" id="emptyState">
         <div class="empty-emoji">🛍️</div>
         <h3>Ro'yxat bo'sh</h3>
         <p>Birinchi mahsulotni qo'shing!</p>
       </div>
 
-      <!-- INSTALL BANNER -->
       <div class="install-banner" id="installBanner">
         <span>📲 Ilovani telefoningizga o'rnating</span>
-        <button class="install-btn" id="installBtn">O'rnatish</button>
-        <button class="dismiss-btn" id="dismissBtn">✕</button>
+        <button id="installBtn" class="install-btn">O'rnatish</button>
+        <button id="dismissBtn" class="dismiss-btn">✕</button>
       </div>
     </div>
 
