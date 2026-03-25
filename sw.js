@@ -1,5 +1,6 @@
 // Service Worker — Ro'yxat PWA
-const CACHE = "spiska-v1";
+// MUHIM: GitHub API so'rovlari cache ga tushmaydi!
+const CACHE = "spiska-v2";
 const ASSETS = [
   "./index.html",
   "./style.css",
@@ -24,6 +25,20 @@ self.addEventListener("activate", e => {
 });
 
 self.addEventListener("fetch", e => {
+  const url = e.request.url;
+
+  // GitHub API so'rovlarini HECH QACHON cache ga tushurmang!
+  if (url.includes("api.github.com") || url.includes("github.com")) {
+    e.respondWith(fetch(e.request));
+    return;
+  }
+
+  // Faqat GET so'rovlarini cache dan qaytarish
+  if (e.request.method !== "GET") {
+    e.respondWith(fetch(e.request));
+    return;
+  }
+
   e.respondWith(
     caches.match(e.request).then(cached => cached || fetch(e.request))
   );
