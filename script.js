@@ -1,13 +1,12 @@
 /* ==========================================
    Ro'yxat — Firebase Realtime Database
-   Real-time onValue listener (polling yo'q)
+   Event delegation — no onclick attributes
 ========================================== */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getDatabase, ref, set, onValue }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-// ── FIREBASE CONFIG ────────────────────────
 const firebaseConfig = {
   apiKey: "AIzaSyB8w43kVVgzpFFq9DHyr_vGC4t02m0iwrA",
   authDomain: "korzinka-4cafa.firebaseapp.com",
@@ -18,13 +17,11 @@ const firebaseConfig = {
   appId: "1:381504619841:web:ad703fcafb29c74d00cdc0",
   measurementId: "G-RV9Y4ZRM67"
 };
-// ──────────────────────────────────────────
 
 const app   = initializeApp(firebaseConfig);
 const db    = getDatabase(app);
 const dbRef = ref(db, "spiska");
 
-// ── STATE ──────────────────────────────────
 let products       = JSON.parse(localStorage.getItem("spiska_v2") || "[]");
 let deleteIndex    = null;
 let editIndex      = null;
@@ -33,7 +30,6 @@ let allSelected    = false;
 let deferredPrompt = null;
 let isSyncing      = false;
 
-// ── DOM ────────────────────────────────────
 const form         = document.getElementById("productForm");
 const nameInput    = document.getElementById("nameInput");
 const listEl       = document.getElementById("productList");
@@ -45,7 +41,6 @@ const progressPct  = document.getElementById("progressPct");
 const itemCountEl  = document.getElementById("itemCount");
 const selCountEl   = document.getElementById("selectedCount");
 
-// ── SYNC STATUS ────────────────────────────
 function setSyncStatus(state) {
   const dot = document.getElementById("syncDot");
   const txt = document.getElementById("syncText");
@@ -55,18 +50,15 @@ function setSyncStatus(state) {
   txt.textContent = labels[state] || "";
 }
 
-// ── LOCAL SAVE ─────────────────────────────
 function saveLocal() {
   localStorage.setItem("spiska_v2", JSON.stringify(products));
 }
 
-// ── FIREBASE WRITE ─────────────────────────
 async function saveAndSync() {
   saveLocal();
   isSyncing = true;
   setSyncStatus("syncing");
   try {
-    // selected faqat lokal — Firebasega saqlanmaydi
     const toSave = products.map(({ selected, ...rest }) => rest);
     await set(dbRef, toSave);
     setSyncStatus("ok");
@@ -78,22 +70,15 @@ async function saveAndSync() {
   }
 }
 
-// ── REAL-TIME LISTENER ─────────────────────
 function initSync() {
   setSyncStatus("syncing");
-
   onValue(dbRef, (snapshot) => {
-    if (isSyncing) return; // o'zimiz yozayotganda e'tibor bermaymiz
-
+    if (isSyncing) return;
     const data   = snapshot.val();
     const remote = Array.isArray(data) ? data : [];
-
-    // Lokal selected holatini saqlab qolish
     const selectedMap = {};
     products.forEach(p => { if (p.id) selectedMap[p.id] = p.selected; });
-
     products = remote.map(p => ({ ...p, selected: selectedMap[p.id] || false }));
-
     saveLocal();
     render();
     setSyncStatus("ok");
@@ -103,7 +88,6 @@ function initSync() {
   });
 }
 
-// ── RENDER ─────────────────────────────────
 function render() {
   listEl.innerHTML = "";
   const filtered = products.filter(p => {
@@ -119,17 +103,17 @@ function render() {
     card.className = "card" + (product.done ? " done" : "");
     card.dataset.index = realIndex;
     card.innerHTML = `
-      <div class="card-select${product.selected ? " selected" : ""}" onclick="toggleSelect(${realIndex})"></div>
-      <div class="card-check${product.done ? " checked" : ""}" onclick="toggleDone(${realIndex})"></div>
+      <div class="card-select${product.selected ? " selected" : ""}" data-action="select" data-index="${realIndex}"></div>
+      <div class="card-check${product.done ? " checked" : ""}" data-action="done" data-index="${realIndex}"></div>
       <span class="card-name">${escHtml(product.name)}</span>
       <div class="card-actions">
-        <button class="card-btn btn-edit" onclick="openEdit(${realIndex})">
+        <button class="card-btn btn-edit" data-action="edit" data-index="${realIndex}">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
           </svg>
         </button>
-        <button class="card-btn btn-del" onclick="openDeleteModal(${realIndex})">
+        <button class="card-btn btn-del" data-action="delete" data-index="${realIndex}">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
             <polyline points="3 6 5 6 21 6"/>
             <path d="M19 6l-1 14H6L5 6"/>
@@ -158,6 +142,18 @@ function updateStats() {
   selCountEl.textContent = sel > 0 ? sel + " ta tanlandi" : "";
 }
 
+// ── EVENT DELEGATION — list ────────────────
+listEl.addEventListener("click", e => {
+  const el = e.target.closest("[data-action]");
+  if (!el) return;
+  const action = el.dataset.action;
+  const i = parseInt(el.dataset.index, 10);
+  if (action === "done")   toggleDone(i);
+  if (action === "select") toggleSelect(i);
+  if (action === "edit")   openEdit(i);
+  if (action === "delete") openDeleteModal(i);
+});
+
 // ── FORM ───────────────────────────────────
 form.addEventListener("submit", e => {
   e.preventDefault();
@@ -171,14 +167,15 @@ form.addEventListener("submit", e => {
   if (navigator.vibrate) navigator.vibrate(30);
 });
 
-// ── ACTIONS ────────────────────────────────
 function toggleDone(i)   { products[i].done = !products[i].done; saveAndSync(); render(); if (navigator.vibrate) navigator.vibrate(20); }
 function toggleSelect(i) { products[i].selected = !products[i].selected; saveLocal(); render(); }
+
 function toggleSelectAll() {
   allSelected = !allSelected;
   products.forEach(p => p.selected = allSelected);
   saveLocal(); render();
 }
+
 function updateSelectAll() {
   const btn = document.getElementById("selectAllBtn");
   if (!btn) return;
@@ -195,14 +192,18 @@ function openDeleteModal(i) {
   document.getElementById("modalText").textContent = `"${products[i].name}" — o'chirasizmi?`;
   document.getElementById("deleteModal").classList.add("open");
 }
-function closeModal() { document.getElementById("deleteModal").classList.remove("open"); deleteIndex = null; }
-document.getElementById("confirmDelete").onclick = () => {
+function closeModal() {
+  document.getElementById("deleteModal").classList.remove("open");
+  deleteIndex = null;
+}
+document.getElementById("confirmDelete").addEventListener("click", () => {
   if (deleteIndex === null) return;
   const card = listEl.querySelector(`[data-index="${deleteIndex}"]`);
   const doDelete = () => { products.splice(deleteIndex, 1); deleteIndex = null; saveAndSync(); render(); };
   if (card) { card.classList.add("removing"); setTimeout(doDelete, 260); } else doDelete();
   closeModal();
-};
+});
+
 function deleteSelected() {
   if (!products.some(p => p.selected)) return;
   products = products.filter(p => !p.selected);
@@ -212,7 +213,9 @@ function deleteSelected() {
 // ── CLEAR ──────────────────────────────────
 function openClearModal()  { document.getElementById("clearModal").classList.add("open"); }
 function closeClearModal() { document.getElementById("clearModal").classList.remove("open"); }
-document.getElementById("confirmClear").onclick = () => { products = []; saveAndSync(); render(); closeClearModal(); };
+document.getElementById("confirmClear").addEventListener("click", () => {
+  products = []; saveAndSync(); render(); closeClearModal();
+});
 
 // ── EDIT ───────────────────────────────────
 function openEdit(i) {
@@ -221,42 +224,41 @@ function openEdit(i) {
   document.getElementById("editModal").classList.add("open");
   setTimeout(() => document.getElementById("editInput").focus(), 100);
 }
-function closeEditModal() { document.getElementById("editModal").classList.remove("open"); editIndex = null; }
-document.getElementById("confirmEdit").onclick = () => {
+function closeEditModal() {
+  document.getElementById("editModal").classList.remove("open");
+  editIndex = null;
+}
+document.getElementById("confirmEdit").addEventListener("click", () => {
   if (editIndex === null) return;
   const val = document.getElementById("editInput").value.trim();
   if (!val) return;
   products[editIndex].name = val;
   saveAndSync(); render(); closeEditModal();
-};
+});
 document.getElementById("editInput").addEventListener("keydown", e => {
   if (e.key === "Enter")  document.getElementById("confirmEdit").click();
   if (e.key === "Escape") closeEditModal();
 });
 
-// ── FILTER ─────────────────────────────────
-function setFilter(filter) {
-  currentFilter = filter;
-  document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.filter === filter));
+// ── FILTER TABS ────────────────────────────
+document.getElementById("filterTabs").addEventListener("click", e => {
+  const tab = e.target.closest(".tab");
+  if (!tab) return;
+  currentFilter = tab.dataset.filter;
+  document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.filter === currentFilter));
   render();
-}
+});
 
-// ── THEME ──────────────────────────────────
-function toggleTheme() {
-  document.body.classList.toggle("dark");
-  const isDark = document.body.classList.contains("dark");
-  document.getElementById("themeIcon").textContent = isDark ? "☀️" : "🌙";
-  localStorage.setItem("spiska_theme", isDark ? "dark" : "light");
-}
-(function () {
-  if (localStorage.getItem("spiska_theme") === "dark") {
-    document.body.classList.add("dark");
-    const icon = document.getElementById("themeIcon");
-    if (icon) icon.textContent = "☀️";
-  }
-})();
+// ── ACTION BAR ─────────────────────────────
+document.getElementById("selectAllBtn").addEventListener("click", toggleSelectAll);
+document.getElementById("deleteSelBtn").addEventListener("click", deleteSelected);
+document.getElementById("clearAllBtn").addEventListener("click", openClearModal);
 
-// ── MODAL BACKDROP ─────────────────────────
+// ── MODAL CANCEL BUTTONS ───────────────────
+document.getElementById("cancelDelete").addEventListener("click", closeModal);
+document.getElementById("cancelEdit").addEventListener("click", closeEditModal);
+document.getElementById("cancelClear").addEventListener("click", closeClearModal);
+
 document.querySelectorAll(".modal-backdrop").forEach(m => {
   m.addEventListener("click", e => {
     if (e.target === m) { m.classList.remove("open"); deleteIndex = null; editIndex = null; }
@@ -267,6 +269,21 @@ document.addEventListener("keydown", e => {
     document.querySelectorAll(".modal-backdrop.open").forEach(m => m.classList.remove("open"));
 });
 
+// ── THEME ──────────────────────────────────
+document.getElementById("themeBtn").addEventListener("click", () => {
+  document.body.classList.toggle("dark");
+  const isDark = document.body.classList.contains("dark");
+  document.getElementById("themeIcon").textContent = isDark ? "☀️" : "🌙";
+  localStorage.setItem("spiska_theme", isDark ? "dark" : "light");
+});
+(function () {
+  if (localStorage.getItem("spiska_theme") === "dark") {
+    document.body.classList.add("dark");
+    const icon = document.getElementById("themeIcon");
+    if (icon) icon.textContent = "☀️";
+  }
+})();
+
 // ── PWA INSTALL ────────────────────────────
 window.addEventListener("beforeinstallprompt", e => {
   e.preventDefault(); deferredPrompt = e;
@@ -275,40 +292,29 @@ window.addEventListener("beforeinstallprompt", e => {
     if (b && !localStorage.getItem("installDismissed")) b.classList.add("show");
   }, 3000);
 });
-function installApp() {
+document.getElementById("installBtn").addEventListener("click", () => {
   if (!deferredPrompt) return;
   deferredPrompt.prompt();
-  deferredPrompt.userChoice.then(() => { deferredPrompt = null; document.getElementById("installBanner").classList.remove("show"); });
-}
-function dismissBanner() {
+  deferredPrompt.userChoice.then(() => {
+    deferredPrompt = null;
+    document.getElementById("installBanner").classList.remove("show");
+  });
+});
+document.getElementById("dismissBtn").addEventListener("click", () => {
   document.getElementById("installBanner").classList.remove("show");
   localStorage.setItem("installDismissed", "1");
-}
-window.addEventListener("appinstalled", () => document.getElementById("installBanner").classList.remove("show"));
+});
+window.addEventListener("appinstalled", () =>
+  document.getElementById("installBanner").classList.remove("show")
+);
 
 // ── SERVICE WORKER ─────────────────────────
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
 }
 
-// ── HELPER ─────────────────────────────────
 function escHtml(str) {
   return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 }
 
-// ── START ──────────────────────────────────
 initSync();
-window.toggleDone = toggleDone;
-window.toggleSelect = toggleSelect;
-window.toggleSelectAll = toggleSelectAll;
-window.openDeleteModal = openDeleteModal;
-window.closeModal = closeModal;
-window.deleteSelected = deleteSelected;
-window.openClearModal = openClearModal;
-window.closeClearModal = closeClearModal;
-window.openEdit = openEdit;
-window.closeEditModal = closeEditModal;
-window.setFilter = setFilter;
-window.toggleTheme = toggleTheme;
-window.installApp = installApp;
-window.dismissBanner = dismissBanner;
