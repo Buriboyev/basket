@@ -9,6 +9,7 @@
 const firebaseConfig = {
   apiKey: "AIzaSyB8w43kVVgzpFFq9DHyr_vGC4t02m0iwrA",
   authDomain: "korzinka-4cafa.firebaseapp.com",
+  databaseURL: "https://korzinka-4cafa-default-rtdb.firebaseio.com",
   projectId: "korzinka-4cafa",
   storageBucket: "korzinka-4cafa.firebasestorage.app",
   messagingSenderId: "381504619841",
@@ -57,8 +58,16 @@ function setSyncStatus(state) {
 
 // ── FIREBASE INIT ──────────────────────────
 function initFirebase() {
-  // Firebase SDK v9 compat mode (CDN orqali yuklangan)
-  firebase.initializeApp(FIREBASE_CONFIG);
+  try {
+    firebase.initializeApp(firebaseConfig);
+  } catch(e) {
+    // Agar allaqachon init qilingan bo'lsa
+    if (!/already exists/.test(e.message)) {
+      setSyncStatus("error");
+      return;
+    }
+  }
+
   const db = firebase.database();
   dbRef = db.ref(DB_PATH);
 
