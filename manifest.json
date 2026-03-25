@@ -9,17 +9,18 @@
   "background_color": "#f0f2ff",
   "theme_color": "#6c63ff",
   "lang": "uz",
+  "id": "/basket/",
   "icons": [
     {
       "src": "/basket/icon-192.png",
       "sizes": "192x192",
-      "type": "image/jpeg",
+      "type": "image/png",
       "purpose": "any maskable"
     },
     {
       "src": "/basket/icon-512.png",
       "sizes": "512x512",
-      "type": "image/jpeg",
+      "type": "image/png",
       "purpose": "any maskable"
     }
   ],
