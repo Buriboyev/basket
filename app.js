@@ -134,8 +134,12 @@ function showGroupsPage() {
   if (currentGroup) {
     updateGroupStatsLocal(currentGroup);
   }
-  document.getElementById("groupsPage").classList.add("active");
-  document.getElementById("listPage").classList.remove("active");
+  const groupsPage = document.getElementById("groupsPage");
+  const listPage = document.getElementById("listPage");
+  groupsPage.hidden = false;
+  listPage.hidden = true;
+  groupsPage.classList.add("active");
+  listPage.classList.remove("active");
   currentGroup = null;
   renderGroups();
 }
@@ -144,9 +148,13 @@ function showListPage(groupId) {
   currentGroup = groupId;
   currentFilter = "all";
   const group = groups[groupId];
+  const groupsPage = document.getElementById("groupsPage");
+  const listPage = document.getElementById("listPage");
 
-  document.getElementById("groupsPage").classList.remove("active");
-  document.getElementById("listPage").classList.add("active");
+  groupsPage.hidden = true;
+  listPage.hidden = false;
+  groupsPage.classList.remove("active");
+  listPage.classList.add("active");
   document.getElementById("listPageTitle").textContent = group ? group.name : "Guruh";
   document.getElementById("listPageTitle").style.color = group?.color || "";
   document.querySelectorAll(".tab").forEach((tab) => {
@@ -845,4 +853,5 @@ if ("serviceWorker" in navigator) {
 }
 
 renderGroups();
+showGroupsPage();
 initSync();

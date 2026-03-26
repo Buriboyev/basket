@@ -52,6 +52,10 @@ body {
   overscroll-behavior: none;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 /* ==========================================
    APP SHELL
 ========================================== */
