@@ -196,6 +196,7 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  padding-bottom: 14px;
   transition: transform 0.22s, box-shadow 0.22s;
   animation: cardIn 0.3s cubic-bezier(.22,1,.36,1) both;
   position: relative;
@@ -218,24 +219,23 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 10px 10px 6px;
-  position: relative;
+  gap: 10px;
+  padding: 18px 12px 10px;
 }
 
 .group-actions-row {
-  position: absolute;
-  top: 8px;
-  right: 6px;
   display: flex;
-  gap: 4px;
-  z-index: 2;
+  gap: 8px;
+  justify-content: stretch;
+  padding-bottom: 8px;
 }
 
 .group-act-btn {
-  width: 28px;
-  height: 28px;
+  flex: 1;
+  width: auto;
+  height: 42px;
   border: none;
-  border-radius: 8px;
+  border-radius: 12px;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -246,13 +246,28 @@ body {
 }
 .group-act-btn:active { transform: scale(0.88); opacity: 1; }
 
+.group-act-btn svg {
+  width: 17px;
+  height: 17px;
+  
+}
+
 .edit-group-btn  { color: #f59e0b; }
 .del-group-btn   { color: var(--del-color); }
 
 .group-icon {
   font-size: 36px;
-  margin-bottom: 6px;
   filter: drop-shadow(0 2px 4px color-mix(in srgb, var(--gcolor) 40%, transparent));
+}
+
+.group-title-row {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 0 4px;
 }
 
 .group-name {
@@ -262,20 +277,23 @@ body {
   text-align: center;
   line-height: 1.2;
   word-break: break-word;
-  max-width: 100%;
-  padding: 0 4px;
+  width: 100%;
 }
 
 .group-card-bot {
-  padding: 8px 12px 10px;
-  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 8px 12px 6px;
+  margin-top: auto;
+  transform: translateY(-13px);
 }
 
 .group-stats {
   font-size: 11px;
   font-weight: 700;
   color: var(--text2);
-  margin-bottom: 5px;
+  text-align: center;
 }
 
 .group-progress-bar {
@@ -283,6 +301,7 @@ body {
   background: var(--bg3);
   border-radius: 10px;
   overflow: hidden;
+  margin-bottom: 2px;
 }
 
 .group-progress-fill {
@@ -898,4 +917,19 @@ body {
   .card-name { font-size: 15px; }
   .action-btn { padding: 7px 10px; font-size: 11px; }
   .groups-grid { gap: 10px; padding: 8px 12px; }
+  .group-title-row { gap: 6px; }
+  .group-act-btn {
+    height: 40px;
+    border-radius: 11px;
+  }
+  .group-act-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+  .group-name {
+    font-size: 13px;
+  }
+  .group-stats {
+    font-size: 10px;
+  }
 }

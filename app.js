@@ -185,6 +185,16 @@ function renderGroups() {
     card.dataset.id = group.id;
     card.innerHTML = `
       <div class="group-card-top">
+        <div class="group-icon">📋</div>
+        <div class="group-title-row">
+          <div class="group-name">${escHtml(group.name)}</div>
+          <div class="group-stats">${total} ta mahsulot</div>
+        </div>
+      </div>
+      <div class="group-card-bot">
+        <div class="group-progress-bar">
+          <div class="group-progress-fill" style="width:${total > 0 ? Math.round((done / total) * 100) : 0}%"></div>
+        </div>
         <div class="group-actions-row">
           <button class="group-act-btn edit-group-btn" data-id="${group.id}" title="Tahrirlash">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
@@ -200,14 +210,6 @@ function renderGroups() {
               <path d="M9 6V4h6v2"/>
             </svg>
           </button>
-        </div>
-        <div class="group-icon">📋</div>
-        <div class="group-name">${escHtml(group.name)}</div>
-      </div>
-      <div class="group-card-bot">
-        <div class="group-stats">${total} ta mahsulot</div>
-        <div class="group-progress-bar">
-          <div class="group-progress-fill" style="width:${total > 0 ? Math.round((done / total) * 100) : 0}%"></div>
         </div>
       </div>
     `;
