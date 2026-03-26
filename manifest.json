@@ -1,7 +1,7 @@
 {
-  "name": "Ro'yxat — Xaridlar",
+  "name": "Ro'yxat - Xaridlar",
   "short_name": "Ro'yxat",
-  "description": "Xaridlar ro'yxati — tez, qulay, offline",
+  "description": "Xaridlar ro'yxati - tez, qulay, offline",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
@@ -9,16 +9,16 @@
   "background_color": "#f0f2ff",
   "theme_color": "#6c63ff",
   "lang": "uz",
-  "id": "/basket/",
+  "id": "./",
   "icons": [
     {
-      "src": "/basket/icon-192.png",
+      "src": "./icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/basket/icon-512.png",
+      "src": "./icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"

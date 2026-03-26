@@ -1,45 +1,40 @@
-// Service Worker — Ro'yxat PWA
-// MUHIM: GitHub API so'rovlari cache ga tushmaydi!
-const CACHE = "spiska-v2";
+const CACHE = "spiska-v4";
 const ASSETS = [
+  "./",
   "./index.html",
   "./style.css",
-  "./script.js",
-  "./manifest.json",
+  "./app.js?v=20260327-1",
+  "./manifest.json?v=20260327-1",
+  "./icon-192.png",
+  "./icon-512.png"
 ];
 
-self.addEventListener("install", e => {
-  e.waitUntil(
-    caches.open(CACHE).then(c => c.addAll(ASSETS))
-  );
+self.addEventListener("install", (event) => {
+  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(ASSETS)));
   self.skipWaiting();
 });
 
-self.addEventListener("activate", e => {
-  e.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) =>
+      Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key)))
     )
   );
   self.clients.claim();
 });
 
-self.addEventListener("fetch", e => {
-  const url = e.request.url;
+self.addEventListener("fetch", (event) => {
+  const url = event.request.url;
 
-  // GitHub API so'rovlarini HECH QACHON cache ga tushurmang!
   if (url.includes("api.github.com") || url.includes("github.com")) {
-    e.respondWith(fetch(e.request));
+    event.respondWith(fetch(event.request));
     return;
   }
 
-  // Faqat GET so'rovlarini cache dan qaytarish
-  if (e.request.method !== "GET") {
-    e.respondWith(fetch(e.request));
+  if (event.request.method !== "GET") {
+    event.respondWith(fetch(event.request));
     return;
   }
 
-  e.respondWith(
-    caches.match(e.request).then(cached => cached || fetch(e.request))
-  );
+  event.respondWith(caches.match(event.request).then((cached) => cached || fetch(event.request)));
 });

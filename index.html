@@ -9,7 +9,7 @@
     <meta name="apple-mobile-web-app-title" content="Ro'yxat" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="description" content="Xaridlar ro'yxati — tez, qulay, offline" />
-    <link rel="manifest" href="manifest.json" />
+    <link rel="manifest" href="manifest.json?v=20260327-1" />
     <link rel="apple-touch-icon" href="icon-192.png" />
     <title>Ro'yxat</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -17,7 +17,44 @@
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <!-- DELETE MODAL -->
+
+    <!-- GURUH QO'SHISH / TAHRIRLASH MODALI -->
+    <div id="groupModal" class="modal-backdrop">
+      <div class="modal-box">
+        <div class="modal-icon" id="groupModalIcon">📁</div>
+        <h3 id="groupModalTitle">Yangi guruh</h3>
+        <input type="text" id="groupNameInput" class="edit-input" placeholder="Guruh nomi..." maxlength="30" />
+        <div class="color-picker" id="colorPicker">
+          <div class="color-dot active" data-color="#6c63ff" style="background:#6c63ff"></div>
+          <div class="color-dot" data-color="#ff6584" style="background:#ff6584"></div>
+          <div class="color-dot" data-color="#10b981" style="background:#10b981"></div>
+          <div class="color-dot" data-color="#f59e0b" style="background:#f59e0b"></div>
+          <div class="color-dot" data-color="#3b82f6" style="background:#3b82f6"></div>
+          <div class="color-dot" data-color="#ef4444" style="background:#ef4444"></div>
+          <div class="color-dot" data-color="#8b5cf6" style="background:#8b5cf6"></div>
+          <div class="color-dot" data-color="#06b6d4" style="background:#06b6d4"></div>
+        </div>
+        <div class="modal-btns">
+          <button class="btn-cancel" id="cancelGroupModal">Bekor</button>
+          <button class="btn-primary" id="confirmGroupModal">Saqlash</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- GURUH O'CHIRISH MODALI -->
+    <div id="deleteGroupModal" class="modal-backdrop">
+      <div class="modal-box">
+        <div class="modal-icon">🗑️</div>
+        <h3>Guruhni o'chirish</h3>
+        <p id="deleteGroupText">Bu guruhni o'chirasizmi?</p>
+        <div class="modal-btns">
+          <button class="btn-cancel" id="cancelDeleteGroup">Bekor</button>
+          <button class="btn-danger" id="confirmDeleteGroup">O'chirish</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MAHSULOT O'CHIRISH MODALI -->
     <div id="deleteModal" class="modal-backdrop">
       <div class="modal-box">
         <div class="modal-icon">🗑️</div>
@@ -30,7 +67,7 @@
       </div>
     </div>
 
-    <!-- EDIT MODAL -->
+    <!-- MAHSULOT TAHRIRLASH MODALI -->
     <div id="editModal" class="modal-backdrop">
       <div class="modal-box">
         <div class="modal-icon">✏️</div>
@@ -43,7 +80,7 @@
       </div>
     </div>
 
-    <!-- CLEAR ALL MODAL -->
+    <!-- HAMMASINI O'CHIRISH MODALI -->
     <div id="clearModal" class="modal-backdrop">
       <div class="modal-box">
         <div class="modal-icon">⚠️</div>
@@ -57,89 +94,139 @@
     </div>
 
     <div class="app">
-      <header class="app-header">
-        <div class="header-left">
-          <div class="app-logo">🛒</div>
-          <div>
-            <h1 class="app-title">Ro'yxat</h1>
-            <p class="app-sub" id="itemCount">0 ta mahsulot</p>
-          </div>
-        </div>
-        <div class="header-right">
-          <div class="sync-status" id="syncStatus">
-            <span class="sync-dot syncing" id="syncDot"></span>
-            <span class="sync-text" id="syncText">Ulanmoqda...</span>
-          </div>
-          <button class="icon-btn" id="themeBtn" title="Tema">
-            <span id="themeIcon">🌙</span>
-          </button>
-        </div>
-      </header>
 
-      <div class="progress-wrap" id="progressWrap">
-        <div class="progress-info">
-          <span id="doneCount">0 ta bajarildi</span>
-          <span id="progressPct">0%</span>
-        </div>
-        <div class="progress-bar">
-          <div class="progress-fill" id="progressFill"></div>
-        </div>
-      </div>
+      <!-- ═══════════════════════════
+           SAHIFA 1 — GURUHLAR
+      ═══════════════════════════ -->
+      <div id="groupsPage" class="page active">
 
-      <div class="input-area">
-        <form id="productForm">
-          <div class="input-wrap">
-            <span class="input-icon">📝</span>
-            <input type="text" id="nameInput" placeholder="Mahsulot qo'shing..." autocomplete="off" autocorrect="off" spellcheck="false" />
-            <button type="submit" class="add-btn" aria-label="Qo'shish">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
+        <header class="app-header">
+          <div class="header-left">
+            <div class="app-logo">🛒</div>
+            <div>
+              <h1 class="app-title">Ro'yxat</h1>
+              <p class="app-sub">Guruhlarim</p>
+            </div>
+          </div>
+          <div class="header-right">
+            <div class="sync-status" id="syncStatus">
+              <span class="sync-dot syncing" id="syncDot"></span>
+              <span class="sync-text" id="syncText">Ulanmoqda...</span>
+            </div>
+            <button class="icon-btn" id="themeBtn" title="Tema">
+              <span id="themeIcon">🌙</span>
             </button>
           </div>
-        </form>
-      </div>
+        </header>
 
-      <div class="filter-tabs" id="filterTabs">
-        <button class="tab active" data-filter="all">Hammasi</button>
-        <button class="tab" data-filter="active">Qolgan</button>
-        <button class="tab" data-filter="done">Bajarildi</button>
-      </div>
+        <div class="groups-grid" id="groupsGrid"></div>
 
-      <div class="action-bar" id="actionBar">
-        <button class="action-btn select-all-btn" id="selectAllBtn">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12" /></svg>
-          Hammasini tanlash
-        </button>
-        <div class="action-right">
-          <span class="selected-count" id="selectedCount"></span>
-          <button class="action-btn delete-sel-btn" id="deleteSelBtn">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" /><path d="M9 6V4h6v2" /></svg>
-            O'chirish
-          </button>
-          <button class="action-btn clear-btn" id="clearAllBtn">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /></svg>
-            Hammasini
-          </button>
+        <div class="empty-state" id="groupsEmpty">
+          <div class="empty-emoji">📂</div>
+          <h3>Guruh yo'q</h3>
+          <p>Birinchi guruhingizni yarating!</p>
         </div>
+
+        <button class="fab" id="addGroupBtn" title="Guruh qo'shish">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round">
+            <line x1="12" y1="5" x2="12" y2="19"/>
+            <line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+        </button>
+
       </div>
 
-      <div id="productList" class="product-list"></div>
+      <!-- ═══════════════════════════
+           SAHIFA 2 — RO'YXAT
+      ═══════════════════════════ -->
+      <div id="listPage" class="page">
 
-      <div class="empty-state" id="emptyState">
-        <div class="empty-emoji">🛍️</div>
-        <h3>Ro'yxat bo'sh</h3>
-        <p>Birinchi mahsulotni qo'shing!</p>
-      </div>
+        <header class="app-header">
+          <div class="header-left">
+            <button class="back-btn" id="backBtn">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                <polyline points="15 18 9 12 15 6"/>
+              </svg>
+            </button>
+            <div>
+              <h1 class="app-title" id="listPageTitle">Guruh</h1>
+              <p class="app-sub" id="itemCount">0 ta mahsulot</p>
+            </div>
+          </div>
+          <div class="header-right">
+            <button class="icon-btn" id="themeBtnList" title="Tema">
+              <span id="themeIconList">🌙</span>
+            </button>
+          </div>
+        </header>
 
-      <div class="install-banner" id="installBanner">
-        <span>📲 Ilovani telefoningizga o'rnating</span>
-        <button id="installBtn" class="install-btn">O'rnatish</button>
-        <button id="dismissBtn" class="dismiss-btn">✕</button>
+        <div class="progress-wrap" id="progressWrap">
+          <div class="progress-info">
+            <span id="doneCount">0 ta bajarildi</span>
+            <span id="progressPct">0%</span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+          </div>
+        </div>
+
+        <div class="input-area">
+          <form id="productForm">
+            <div class="input-wrap">
+              <span class="input-icon">📝</span>
+              <input type="text" id="nameInput" placeholder="Mahsulot qo'shing..." autocomplete="off" autocorrect="off" spellcheck="false" />
+              <button type="submit" class="add-btn" aria-label="Qo'shish">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="12" y1="5" x2="12" y2="19"/>
+                  <line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <div class="filter-tabs" id="filterTabs">
+          <button class="tab active" data-filter="all">Hammasi</button>
+          <button class="tab" data-filter="active">Qolgan</button>
+          <button class="tab" data-filter="done">Bajarildi</button>
+        </div>
+
+        <div class="action-bar">
+          <button class="action-btn select-all-btn" id="selectAllBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            Hammasini tanlash
+          </button>
+          <div class="action-right">
+            <span class="selected-count" id="selectedCount"></span>
+            <button class="action-btn delete-sel-btn" id="deleteSelBtn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+              O'chirish
+            </button>
+            <button class="action-btn clear-btn" id="clearAllBtn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
+              Hammasini
+            </button>
+          </div>
+        </div>
+
+        <div id="productList" class="product-list"></div>
+
+        <div class="empty-state" id="emptyState">
+          <div class="empty-emoji">🛍️</div>
+          <h3>Ro'yxat bo'sh</h3>
+          <p>Birinchi mahsulotni qo'shing!</p>
+        </div>
+
       </div>
     </div>
 
-    <script type="module" src="script.js"></script>
+    <!-- PWA Install Banner -->
+    <div class="install-banner" id="installBanner">
+      <span>📲 Ilovani telefoningizga o'rnating</span>
+      <button id="installBtn" class="install-btn">O'rnatish</button>
+      <button id="dismissBtn" class="dismiss-btn">✕</button>
+    </div>
+
+    <script type="module" src="app.js?v=20260327-1"></script>
   </body>
 </html>

@@ -59,10 +59,22 @@ body {
   max-width: 480px;
   margin: 0 auto;
   min-height: 100dvh;
-  display: flex;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ==========================================
+   SAHIFALAR (PAGES)
+========================================== */
+.page {
+  display: none;
   flex-direction: column;
-  padding: 0 0 calc(24px + var(--safe-bottom));
+  min-height: 100dvh;
+  padding: 0 0 calc(90px + var(--safe-bottom));
   padding-top: var(--safe-top);
+}
+.page.active {
+  display: flex;
 }
 
 /* ==========================================
@@ -102,6 +114,15 @@ body {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  transition: color 0.3s;
+}
+
+/* Guruh nomida rang bo'lganda gradient o'rnatiladi */
+#listPageTitle[style*="color"] {
+  background: none;
+  -webkit-background-clip: unset;
+  -webkit-text-fill-color: unset;
+  background-clip: unset;
 }
 
 .app-sub {
@@ -109,6 +130,12 @@ body {
   color: var(--text2);
   font-weight: 600;
   margin-top: 2px;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .icon-btn {
@@ -126,6 +153,193 @@ body {
   transition: transform 0.2s, background 0.3s;
 }
 .icon-btn:active { transform: scale(0.92); }
+
+/* ORQAGA TUGMA */
+.back-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: none;
+  background: var(--bg2);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text);
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.18s;
+}
+.back-btn:active { transform: scale(0.92); }
+
+/* ==========================================
+   GURUHLAR GRID (2 ta ustun, kvadrat)
+========================================== */
+.groups-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  padding: 8px 16px 16px;
+}
+
+.group-card {
+  --gcolor: #6c63ff;
+  aspect-ratio: 1 / 1;
+  background: var(--bg2);
+  border-radius: 20px;
+  border: 2px solid color-mix(in srgb, var(--gcolor) 20%, transparent);
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--gcolor) 15%, transparent);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: transform 0.22s, box-shadow 0.22s;
+  animation: cardIn 0.3s cubic-bezier(.22,1,.36,1) both;
+  position: relative;
+}
+
+.group-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 4px;
+  background: var(--gcolor);
+  border-radius: 20px 20px 0 0;
+}
+
+.group-card:active { transform: scale(0.96); }
+
+.group-card-top {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 10px 6px;
+  position: relative;
+}
+
+.group-actions-row {
+  position: absolute;
+  top: 8px;
+  right: 6px;
+  display: flex;
+  gap: 4px;
+  z-index: 2;
+}
+
+.group-act-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.18s, opacity 0.18s;
+  background: var(--bg3);
+  opacity: 0.7;
+}
+.group-act-btn:active { transform: scale(0.88); opacity: 1; }
+
+.edit-group-btn  { color: #f59e0b; }
+.del-group-btn   { color: var(--del-color); }
+
+.group-icon {
+  font-size: 36px;
+  margin-bottom: 6px;
+  filter: drop-shadow(0 2px 4px color-mix(in srgb, var(--gcolor) 40%, transparent));
+}
+
+.group-name {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text);
+  text-align: center;
+  line-height: 1.2;
+  word-break: break-word;
+  max-width: 100%;
+  padding: 0 4px;
+}
+
+.group-card-bot {
+  padding: 8px 12px 10px;
+  border-top: 1px solid var(--border);
+}
+
+.group-stats {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text2);
+  margin-bottom: 5px;
+}
+
+.group-progress-bar {
+  height: 4px;
+  background: var(--bg3);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.group-progress-fill {
+  height: 100%;
+  background: var(--gcolor);
+  border-radius: 10px;
+  transition: width 0.4s cubic-bezier(.22,1,.36,1);
+}
+
+/* ==========================================
+   FAB (Floating Action Button)
+========================================== */
+.fab {
+  position: fixed;
+  bottom: calc(24px + var(--safe-bottom));
+  right: 24px;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+  color: white;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 24px rgba(108,99,255,0.45);
+  transition: transform 0.2s, box-shadow 0.2s;
+  z-index: 200;
+}
+.fab:active {
+  transform: scale(0.92);
+  box-shadow: 0 3px 12px rgba(108,99,255,0.3);
+}
+
+/* ==========================================
+   COLOR PICKER
+========================================== */
+.color-picker {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+.color-dot {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 3px solid transparent;
+  transition: transform 0.18s, border-color 0.18s;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+
+.color-dot:active { transform: scale(0.88); }
+.color-dot.active {
+  border-color: var(--text);
+  transform: scale(1.18);
+}
 
 /* ==========================================
    PROGRESS
@@ -287,19 +501,9 @@ body {
 }
 .action-btn:active { transform: scale(0.95); }
 
-.select-all-btn {
-  background: var(--bg2);
-  color: var(--accent);
-  box-shadow: var(--shadow-sm);
-}
-.delete-sel-btn {
-  background: var(--del-color);
-  color: white;
-}
-.clear-btn {
-  background: var(--bg3);
-  color: var(--text2);
-}
+.select-all-btn  { background: var(--bg2); color: var(--accent); box-shadow: var(--shadow-sm); }
+.delete-sel-btn  { background: var(--del-color); color: white; }
+.clear-btn       { background: var(--bg3); color: var(--text2); }
 
 /* ==========================================
    PRODUCT LIST
@@ -358,7 +562,7 @@ body {
   animation: cardOut 0.28s ease forwards;
 }
 
-/* CHECKBOX (custom) */
+/* CHECKBOX */
 .card-check {
   width: 26px;
   height: 26px;
@@ -449,8 +653,8 @@ body {
 }
 .card-btn:active { transform: scale(0.88); }
 
-.btn-edit  { background: rgba(245,158,11,0.12); color: #f59e0b; }
-.btn-del   { background: rgba(239,68,68,0.1);   color: var(--del-color); }
+.btn-edit { background: rgba(245,158,11,0.12); color: #f59e0b; }
+.btn-del  { background: rgba(239,68,68,0.1);   color: var(--del-color); }
 
 /* ==========================================
    EMPTY STATE
@@ -572,6 +776,7 @@ body {
   outline: none;
   margin-top: 14px;
   transition: border-color 0.25s;
+  text-align: center;
 }
 .edit-input:focus { border-color: var(--accent); }
 
@@ -636,21 +841,6 @@ body {
 ::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 10px; opacity: 0.4; }
 
 /* ==========================================
-   RESPONSIVE — desktop centered
-========================================== */
-@media (min-width: 480px) {
-  .app { border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
-  .modal-backdrop { align-items: center; padding-bottom: 0; }
-  .modal-box { border-radius: var(--radius); }
-}
-
-@media (max-width: 360px) {
-  .app-title { font-size: 20px; }
-  .card-name { font-size: 15px; }
-  .action-btn { padding: 7px 10px; font-size: 11px; }
-}
-
-/* ==========================================
    SYNC STATUS
 ========================================== */
 .sync-status {
@@ -672,26 +862,14 @@ body {
   transition: background 0.3s;
 }
 
-.sync-dot.syncing {
-  background: #f59e0b;
-  animation: pulse-dot 1s infinite;
-}
-
-.sync-dot.ok {
-  background: #22c55e;
-}
-
-.sync-dot.error {
-  background: #ef4444;
-}
-
-.sync-dot.offline {
-  background: #94a3b8;
-}
+.sync-dot.syncing { background: #f59e0b; animation: pulse-dot 1s infinite; }
+.sync-dot.ok      { background: #22c55e; }
+.sync-dot.error   { background: #ef4444; }
+.sync-dot.offline { background: #94a3b8; }
 
 @keyframes pulse-dot {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.3; }
+  50%       { opacity: 0.3; }
 }
 
 .sync-text {
@@ -699,4 +877,21 @@ body {
   font-weight: 600;
   color: var(--text2);
   white-space: nowrap;
+}
+
+/* ==========================================
+   RESPONSIVE
+========================================== */
+@media (min-width: 480px) {
+  .app { border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
+  .modal-backdrop { align-items: center; padding-bottom: 0; }
+  .modal-box { border-radius: var(--radius); }
+  .fab { right: calc(50% - 240px + 24px); }
+}
+
+@media (max-width: 360px) {
+  .app-title { font-size: 20px; }
+  .card-name { font-size: 15px; }
+  .action-btn { padding: 7px 10px; font-size: 11px; }
+  .groups-grid { gap: 10px; padding: 8px 12px; }
 }
